@@ -1,4 +1,4 @@
-import { Alert, View, FlatList } from "react-native";
+import { Alert, View, FlatList, Dimensions } from "react-native";
 import { Text, Button, Input } from "@rneui/themed";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IP } from "../shared/IP";
@@ -15,6 +15,7 @@ export default function CustomerNavigator(props)
             headerShown: false,
         }}>
             <Stack.Screen name="CustomerList" component={CustomerList} />
+            <Stack.Screen name="CustomerDetail" component={CustomerDetail} />
             <Stack.Screen name="AddCustomer" component={AddCustomer} />
             <Stack.Screen name="EditCustomer" component={EditCustomer} />
             <Stack.Screen name="DeleteCustomer" component={DeleteCustomer} />
@@ -100,13 +101,31 @@ function Customer(props)
             }
         ], { cancelable: false })
     }
+    //Dimensions
     //console.log(cInfo);
     return (
-        <SafeAreaView style={{ flexDirection: "row", justifyContent: "space-evenly" }}>
-            <Text style = {{ fontWeight: "bold", fontSize: 20 }}>{cInfo.CustomerID}</Text>
-            <Text style = {{ fontWeight: "bold", fontSize: 20 }}>{cInfo.CustomerName}</Text>
-            <Text style = {{ fontWeight: "100", fontSize: 20 }}>{cInfo.Phone}</Text>
-            <View style={{ flexDirection: "row" }}>
+        <SafeAreaView style={{ flexDirection: "column", justifyContent: "space-evenly", }}>
+            <View style = {{ flexDirection: "row", justifyContent: "space-between",
+                paddingHorizontal: 20
+             }}>
+                <Text style = {{ fontWeight: "bold", fontSize: 20,  }}>Mã KH:</Text>
+                <Text style = {{ fontSize: 20 }}>{cInfo.CustomerID}</Text>
+            </View>
+            <View style = {{ flexDirection: "row", justifyContent: "space-between",
+                paddingHorizontal: 20
+             }}>
+                <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Tên:</Text>
+                <Text style = {{ fontSize: 20 }}>{cInfo.CustomerName}</Text>
+            </View>
+            <View style = {{ flexDirection: "row", justifyContent: "space-between",
+                paddingHorizontal: 20
+             }}>
+                <Text style = {{ fontWeight: "bold", fontSize: 20, borderWidth: 1,
+                    borderColor: "white"
+                 }}>SĐT:</Text>
+                <Text style = {{ fontSize: 20, borderWidth: 1,  borderColor: "white" }}>{cInfo.Phone}</Text>
+            </View>
+            <View style={{ flexDirection: "row", justifyContent: "space-around" }}>
                 <Button title="Sửa" color="primary" onPress = {() => {
                     navigate("EditCustomer", { cInfo, navigation, getAllCustomers })
                 }}/>
@@ -114,17 +133,38 @@ function Customer(props)
                     setToDelete(cInfo.CustomerID);
                     alertDelete();
                 }}/>
+                <Button title = "Xem" onPress={() => {
+                    navigate("CustomerDetail", { cInfo });
+                }} />
             </View>
+            
+            <Text style = {{ textAlign: "center" }}>----------------------</Text>
         </SafeAreaView>
     )
 }
+
+function CustomerDetail(props)
+{
+    var { cInfo } = props.route.params;
+    //console.log(props);
+    return (
+        <SafeAreaView style = {{ marginVertical: 30 }}>
+            <Text style={{ fontSize: 25, fontWeight: "bold", textAlign: "center" }}>Chi tiết khách hàng {cInfo.CustomerID}</Text>
+            <View style={{ marginBottom: 20 }}/>
+            <Text style={{ fontSize: 20, fontWeight: "bold" }}>Tên khách hàng: {cInfo.CustomerName}</Text>
+            <Text style={{ fontSize: 20, fontWeight: "bold" }}>SĐT: {cInfo.Phone}</Text>
+            <Text style={{ textAlign: "center" }}>------------------------------</Text>
+        </SafeAreaView>
+    )
+}
+
 function AddCustomer(props)
 {
     var { navigation, getAllCustomers } = props.route.params;
     var { navigate } = navigation;
     var [ customerId, setcId ] = useState("");
     var [ customerName, setcName ] = useState("");
-    var [ customerPhone, setcPhone ] = useState(0);
+    var [ customerPhone, setcPhone ] = useState("");
 
     function addCustomer()
     {
@@ -150,18 +190,18 @@ function AddCustomer(props)
             if (respond.status == 200)
             {
                 Alert.alert("THÔNG BÁO", "Thêm khách hàng thành công");
-                navigation.goBack();
-                getAllCustomers();
+                //navigation.goBack();
+                //getAllCustomers();
             }
             else if (respond.status == 301)
             {
                 Alert.alert("THÔNG BÁO", `Mã khách hàng ${customerId} đã tồn tại`)
-                navigation.goBack();
+                //navigation.goBack();
             }
             else
             {
                 Alert.alert("THÔNG BÁO", (await respond.json()).msg)
-                navigation.goBack();
+                //navigation.goBack();
             }
         })
     }
@@ -174,7 +214,7 @@ function AddCustomer(props)
             <View style = {{ marginVertical: 30 }}/>
             <Text>Mã khách hàng</Text>
             <Input value={ customerId }
-            onChangeText={(txt) => { setcId(txt) }}></Input>
+            onChangeText={(txt) => { setcId(txt.toUpperCase().trim()) }}></Input>
             <Text>Tên khách hàng</Text>
             <Input value={ customerName }
             onChangeText={(txt) => { setcName(txt) }} />
@@ -183,15 +223,23 @@ function AddCustomer(props)
             onChangeText={ (txt) => {
                 if(!isNaN(txt))
                 {
-                    setcPhone(Number(txt))
+                    setcPhone(txt)
                 }
             }} />
             <Button title="Thêm" onPress = {() => {
                 addCustomer();
+                navigation.goBack();
+                getAllCustomers();
             }}/>
             <Button title="Hủy" onPress = {() => {
                 navigation.goBack();
             }}/>
+            <Button title="Thêm tiếp" onPress = {() => {
+                addCustomer();
+                setcId("");
+                setcName("");
+                setcPhone("");
+            }} />
         </SafeAreaView>
     )
 }

@@ -241,7 +241,11 @@ server.get("/invoices", async (req, res) => {
     try
     {
         var listData = [];
-        (await db).query("select * from invoice").then(([result, field]) => {
+        (await db).query("select I.InvoiceID, CustomerID, InvoiceDate, sum(TotalPrice) as TotalPrice " +
+                         "from Invoice as I, InvoiceDetails as Idl " +
+                         "where Idl.InvoiceID = I.InvoiceID " +
+                         "group by I.InvoiceID, I.CustomerID, I.InvoiceDate"
+        ).then(([result, field]) => {
             result.forEach((r) => {
                 listData.push(r);
             })
@@ -257,8 +261,10 @@ server.get("/invoices", async (req, res) => {
 server.get("/invoices/:id", async (req, res) => {
     try
     {
-        (await db).query(`select * from Invoice where InvoiceID = '${req.params.id}'`).then(([result, field]) => {
-            if (result[0] == null) {
+        (await db).query("select count(*) as count, I.InvoiceID, I.CustomerID, CustomerName, InvoiceDate, sum(TotalPrice) as TotalPrice" + 
+                        " from Invoice as I, InvoiceDetails as Idl, Customer as C" + 
+                        " where I.InvoiceID = ? and I.InvoiceID = Idl.InvoiceID and I.CustomerID = C.CustomerID", [req.params.id]).then(([result, field]) => {
+            if (result[0].count == 0) {
                 res.status(300).send({ msg: `No Invoice ID ${req.params.id}`});
                 return;
             }
@@ -354,8 +360,11 @@ server.get("/invdel/:invId", async (req, res) =>
 {
     try
     {
+        console.log(req.params.invId);
         var listData = [];
-        (await db).query("select * from InvoiceDetails where InvoiceID = ?",
+        (await db).query("select InvoiceDetailID, I.InvoiceID, ProductName, Quantity, Idl.ProductID, TotalPrice" +
+                         " from InvoiceDetails as Idl, Invoice as I, Product as P" +
+                         " where Idl.InvoiceID = ? and Idl.InvoiceID = I.InvoiceID and Idl.ProductID = P.ProductID",
             [Number(req.params.invId)]
         ).then(([result, f]) => {
             result.forEach((r) => {
@@ -365,6 +374,25 @@ server.get("/invdel/:invId", async (req, res) =>
         })
     }
     catch(e)
+    {
+        return res.status(400).send({ msg: e.message })
+    }
+})
+
+server.get("/invdel/:invId/:productId", async (req, res) =>
+{
+    try
+    {
+        var [checkCount] = await (await db).query("select count(*) as count from invoicedetails where InvoiceID = ? and ProductID = ?", [req.params.invId, req.params.productId])
+        if (checkCount[0].count > 0)
+        {
+            
+            return res.status(300).send({ msg: "Already exist" });
+        }
+        var [price] = await (await db).query("select Price from Product where ProductID = ?", [req.params.productId])
+        res.status(200).send({ msg: "OK", price: price[0].Price })
+    }
+    catch (e)
     {
         return res.status(400).send({ msg: e.message })
     }

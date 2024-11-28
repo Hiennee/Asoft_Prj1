@@ -15,6 +15,7 @@ export default function ProductNavigator(props)
             headerShown: false,
         }}>
             <Stack.Screen name="ProductList" component={ProductList} />
+            <Stack.Screen name="ProductDetail" component={ProductDetail} />
             <Stack.Screen name="AddProduct" component={AddProduct} />
             <Stack.Screen name="EditProduct" component={EditProduct} />
             <Stack.Screen name="DeleteProduct" component={DeleteProduct} />
@@ -45,20 +46,25 @@ function ProductList(props)
         })
     }
     return (
-        <ScrollView>
             <SafeAreaView>
-                <Button title = "Thêm" onPress = {() => {
-                    navigate("AddProduct", {
-                        navigation: props.navigation,
-                        getAllProducts,
-                    })
-                }} />
+                
                 <Text style = {{ fontSize: 20, fontWeight: "bold", textAlign: "center" }}>Danh sách sản phẩm</Text>
-                <FlatList data = {productList}
-                renderItem={({ item, index }) => <Product pInfo = {item} navigation = {props.navigation} 
-                                                          getAllProducts = {getAllProducts}/>}/>
+                <View style = {{ flexDirection: "row", justifyContent: "space-around" }}>
+                    <View />
+                    <Button title = "Thêm" onPress = {() => {
+                        navigate("AddProduct", {
+                            navigation: props.navigation,
+                            getAllProducts,
+                        })
+                    }} />
+                </View>
+                <ScrollView>
+                    <FlatList data = {productList}
+                    renderItem={({ item, index }) => <Product pInfo = {item} navigation = {props.navigation} 
+                                                            getAllProducts = {getAllProducts}/>}/>
+                </ScrollView>
+                
             </SafeAreaView>
-        </ScrollView>
     )
 }
 
@@ -101,11 +107,21 @@ function Product(props)
     }
     //console.log(pInfo);
     return (
-        <SafeAreaView style={{ flexDirection: "row", justifyContent: "space-evenly" }}>
-            <Text style = {{ fontWeight: "bold", fontSize: 20 }}>{pInfo.ProductID}</Text>
-            <Text style = {{ fontWeight: "bold", fontSize: 20 }}>{pInfo.ProductName}</Text>
-            <Text style = {{ fontWeight: "100", fontSize: 20 }}>{pInfo.Price} $</Text>
-            <View style={{ flexDirection: "row" }}>
+        <SafeAreaView style={{ flexDirection: "column", justifyContent: "space-evenly" }}>
+            <View style = {{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 10 }}>
+                <Text style = {{ fontWeight: "bold", fontSize: 20 }}>ID:</Text>
+                <Text style = {{ fontSize: 20 }}>{pInfo.ProductID}</Text>
+            </View>
+            <View style = {{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 10 }}>
+                <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Tên SP:</Text>
+                <Text style = {{ fontSize: 20 }}>{pInfo.ProductName}</Text>
+            </View>
+            <View style = {{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 10 }}>
+                <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Giá:</Text>
+                <Text style = {{ ontSize: 20 }}>{pInfo.Price} $</Text>
+            </View>
+             
+            <View style={{ flexDirection: "row", justifyContent: "space-evenly" }}>
                 <Button title="Sửa" color="primary" onPress = {() => {
                     navigate("EditProduct", { pInfo, navigation, getAllProducts })
                 }}/>
@@ -113,10 +129,31 @@ function Product(props)
                     setToDelete(pInfo.ProductID);
                     alertDelete();
                 }}/>
+                <Button title="Xem" onPress={() => {
+                    navigate("ProductDetail", { pInfo });
+                }} />
             </View>
+            
+            <Text style = {{ textAlign: "center" }}>----------------------</Text>
         </SafeAreaView>
     )
 }
+
+function ProductDetail(props)
+{
+    var { pInfo } = props.route.params;
+    //console.log(props);
+    return (
+        <SafeAreaView style = {{ marginVertical: 30 }}>
+            <Text style={{ fontSize: 25, fontWeight: "bold", textAlign: "center" }}>Chi tiết sản phẩm {pInfo.ProductID}</Text>
+            <View style={{ marginBottom: 20 }}/>
+            <Text style={{ fontSize: 20, fontWeight: "bold" }}>Tên sản phẩm: {pInfo.ProductName}</Text>
+            <Text style={{ fontSize: 20, fontWeight: "bold" }}>Giá: {pInfo.Price}</Text>
+            <Text style={{ textAlign: "center" }}>------------------------------</Text>
+        </SafeAreaView>
+    )
+}
+
 function AddProduct(props)
 {
     var { navigation, getAllProducts } = props.route.params;
@@ -140,13 +177,13 @@ function AddProduct(props)
             if (respond.status == 200)
             {
                 Alert.alert("THÔNG BÁO", "Thêm sản phẩm thành công");
-                getAllProducts();
-                navigation.goBack();
+                //getAllProducts();
+                //navigation.goBack();
             }
             else if (respond.status == 301)
             {
                 Alert.alert(`Mã sản phẩm ${productId} đã tồn tại`)
-                navigation.goBack();
+                //navigation.goBack();
             }
             else
             {
@@ -161,13 +198,16 @@ function AddProduct(props)
                            textAlign: "center"
              }}>Thêm sản phẩm</Text>
             <View style = {{ marginVertical: 30 }}/>
-            <Text>Mã sản phẩm</Text>
+            <Text style={{ fontWeight: "bold", fontSize: 20,
+            }}>Mã sản phẩm</Text>
             <Input value={ productId }
-            onChangeText={(txt) => { setpId(txt) }}></Input>
-            <Text>Tên sản phẩm</Text>
+            onChangeText={(txt) => { setpId(txt.toUpperCase().trim()) }}></Input>
+            <Text style={{ fontWeight: "bold", fontSize: 20,
+            }}>Tên sản phẩm</Text>
             <Input value={ productName }
             onChangeText={(txt) => { setpName(txt) }} />
-            <Text>Giá</Text>
+            <Text style={{ fontWeight: "bold", fontSize: 20,
+            }}>Giá</Text>
             <Input value={ productPrice } keyboardType="numeric"
             onChangeText={ (txt) => {
                 if(!isNaN(txt))
@@ -175,12 +215,24 @@ function AddProduct(props)
                     setpPrice(Number(txt))
                 }
             }} />
-            <Button title="Thêm" onPress = {() => {
-                addProduct();
-            }}/>
-            <Button title="Hủy" onPress = {() => {
-                navigation.goBack();
-            }}/>
+            <View style = {{ flexDirection: "column"  }}>
+                <Button title="Thêm" onPress = {() => {
+                    addProduct();
+                    getAllProducts();
+                    navigation.goBack();
+                }}/>
+                <View style={{ marginVertical: 10 }} />
+                <Button title="Hủy" onPress = {() => {
+                    navigation.goBack();
+                }}/>
+                <View style={{ marginVertical: 10 }} />
+                <Button title="Thêm tiếp" onPress = {() => {
+                    addProduct();
+                    setpId("");
+                    setpName("");
+                    setpPrice(0);
+                }} />
+            </View>
         </SafeAreaView>
     )
 }

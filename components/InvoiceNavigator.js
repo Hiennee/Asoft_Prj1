@@ -3,10 +3,11 @@ import { Text, Button, Input } from "@rneui/themed";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IP } from "../shared/IP";
 import { ScrollView } from "react-native-virtualized-view";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { createStackNavigator } from "@react-navigation/stack";
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Picker } from "@react-native-picker/picker";
+import { AppContext } from "./AppContext";
 
 export default function InvoiceNavigator(props)
 {
@@ -19,6 +20,7 @@ export default function InvoiceNavigator(props)
             <Stack.Screen name="InvoiceList" component={InvoiceList} />
             <Stack.Screen name="AddInvoice" component={AddInvoice} />
             <Stack.Screen name="EditInvoice" component={EditInvoice} />
+            <Stack.Screen name="InvoiceDetail" component={InvoiceDetail} />
             <Stack.Screen name="DetailInvoice" component={DetailInvoice} />
             <Stack.Screen name="AddDetailInvoice" component={AddDetailInvoice} />
             <Stack.Screen name="EditDetailInvoice" component={EditDetailInvoice} />
@@ -50,26 +52,23 @@ function InvoiceList(props)
         })
     }
     return (
-        <ScrollView>
-            <SafeAreaView>
+        <SafeAreaView>
+            <Text style = {{ fontSize: 20, fontWeight: "bold", textAlign: "center" }}>Danh sách hóa đơn</Text>
+            <View style = {{ flexDirection: "row", justifyContent: "space-around" }}>
+                <View />
                 <Button title = "Thêm" onPress = {() => {
-                    navigate("AddInvoice", {
+                    navigate("AddProduct", {
                         navigation: props.navigation,
                         getAllInvoices,
                     })
                 }} />
-                <Text style = {{ fontSize: 20, fontWeight: "bold", textAlign: "center" }}>Danh sách hóa đơn</Text>
-                <View style={{ flexDirection: "row", justifyContent: "space-evenly" }}>
-                    <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Mã HĐ</Text>
-                    <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Mã KH</Text>
-                    <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Ngày</Text>
-                    <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Thao tác</Text>
-                </View>
+            </View>
+            <ScrollView>
                 <FlatList data = {invoiceList}
                 renderItem={({ item, index }) => <Invoice iInfo = {item} navigation = {props.navigation} 
-                                                          getAllInvoices = {getAllInvoices}/>}/>
-            </SafeAreaView>
-        </ScrollView>
+                                                        getAllInvoices = {getAllInvoices}/>}/>
+            </ScrollView>
+        </SafeAreaView>
     )
 }
 
@@ -77,6 +76,7 @@ function Invoice(props)
 {
     //console.log("From invoice:", props)
     var { iInfo, navigation, getAllInvoices } = props;
+    console.log("From invoice", iInfo)
     var { navigate } = navigation;
 
     var [ toDelete, setToDelete ] = useState("");
@@ -112,12 +112,27 @@ function Invoice(props)
     //console.log(iInfo);
     return (
         <View>
-            <SafeAreaView style={{ flexDirection: "row", justifyContent: "space-evenly" }}>
-                <Text style = {{ fontWeight: "bold", fontSize: 20 }}>{iInfo.InvoiceID}</Text>
-                <Text style = {{ fontWeight: "bold", fontSize: 20 }}>{iInfo.CustomerID}</Text>
-                <Text style = {{ fontWeight: "100", fontSize: 20 }}>{a.toDateString()}</Text>
+            <SafeAreaView style={{ flexDirection: "column", justifyContent: "space-evenly" }}>
+                <View style = {{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 10 }}>
+                    <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Mã HĐ:</Text>
+                    <Text style = {{ fontSize: 20 }}>{iInfo.InvoiceID}</Text>
+                </View>
+                <View style = {{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 10 }}>
+                    <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Mã KH:</Text>
+                    <Text style = {{ fontSize: 20 }}>{iInfo.CustomerID}</Text>
+                </View>
+                <View style = {{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 10 }}>
+                    <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Giá trị:</Text>
+                    <Text style = {{ fontSize: 20 }}>{iInfo.TotalPrice}</Text>
+                </View>
+                <View style = {{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 10 }}>
+                    <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Ngày:</Text>
+                    <Text style = {{ fontSize: 20 }}>{a.toLocaleString()}</Text>
+                </View>
+                
+                <Text style = {{ fontWeight: "bold", fontSize: 20, textAlign: "center" }}>-----------------------------</Text>
             </SafeAreaView>
-            <View style={{ flexDirection: "row", justifyContent: "center" }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-around" }}>
                 <Button title="Sửa" color="primary" onPress = {() => {
                     navigate("EditInvoice", { iInfo, navigation, getAllInvoices })
                 }}/>
@@ -125,11 +140,56 @@ function Invoice(props)
                     setToDelete(iInfo.InvoiceID);
                     alertDelete();
                 }}/>
+                <Button title="Xem" onPress={() => {
+                    navigate("InvoiceDetail", { iInfo });
+                }} />
                 <Button title="Chi tiết" color="success" onPress = {() => {
                     navigate("DetailInvoice", { invoiceId: iInfo.InvoiceID, navigation, getAllInvoices })
                 }}/>
             </View>
         </View>
+    )
+}
+
+function InvoiceDetail(props)
+{
+    var { iInfo } = props.route.params;
+    var [ iDetail, setIDetail ] = useState({
+        InvoiceID: 0,
+        CustomerID: "",
+        CustomerName: "",
+        InvoiceDate: new Date(),
+        TotalPrice: 0,
+    })
+
+    useEffect(() => {
+        getInvoiceDetail();
+    }, [])
+
+    function getInvoiceDetail()
+    {
+        fetch(IP + `invoices/${iInfo.InvoiceID}`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        }).then(async (respond) => {
+            if (respond.status == 200)
+            {
+                setIDetail(await respond.json());
+            }
+        })
+    }
+    return (
+        <SafeAreaView style = {{ marginVertical: 30 }}>
+            <Text style={{ fontSize: 25, fontWeight: "bold", textAlign: "center" }}>Chi tiết hóa đơn {iInfo.InvoiceID}</Text>
+            <View style={{ marginBottom: 20 }}/>
+            <Text style={{ fontSize: 20, fontWeight: "bold" }}>Mã khách hàng: {iDetail.CustomerID}</Text>
+            <Text style={{ fontSize: 20, fontWeight: "bold" }}>Tên khách hàng: {iDetail.CustomerName}</Text>
+            <Text style={{ fontSize: 20, fontWeight: "bold" }}>Giá trị: {iDetail.TotalPrice} $</Text>
+            <Text style={{ fontSize: 20, fontWeight: "bold" }}>Ngày lập: {new Date(iDetail.InvoiceDate).toDateString()}</Text>
+            <Text style={{ textAlign: "center" }}>------------------------------</Text>
+        </SafeAreaView>
     )
 }
 
@@ -140,6 +200,26 @@ function AddInvoice(props)
     var [ invoiceId, setInvoiceId ] = useState(0);
     var [ customerId, setCustomerId ] = useState("");
     var [ dateIssued, setDateIssued ] = useState(new Date());
+    var [ customerList, setCustomerList ] = useState([]);
+    var [ isChose, setIsChose ] = useState(false);
+
+    useEffect(() => {
+        getAllCustomers();
+    }, [])
+    function getAllCustomers()
+    {
+        fetch(IP + "customers", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        }).then(async (respond) => {
+            if (respond.status == 200)
+            {
+                setCustomerList(await respond.json());
+            }
+        })
+    }
 
     function addInvoice()
     {
@@ -188,8 +268,14 @@ function AddInvoice(props)
                     setInvoiceId(txt) 
             }}></Input>
             <Text>Mã khách hàng</Text>
-            <Input value={ customerId }
-            onChangeText={(txt) => { setCustomerId(txt) }} />
+            <Picker onValueChange={ (val, idx) => { 
+                setIsChose(true);
+                setCustomerId(val) 
+            }}>
+                {customerList.map((item, index) => 
+                <Picker.Item value = {item.CustomerID} label={item.CustomerName}
+                style = {{ width: 200, height: 100 }} />)}
+            </Picker>
             <Text>Ngày</Text>
             <Input disabled value = { dateIssued.toDateString() } />
             <Button title="Chọn ngày" onPress={() => { DateTimePickerAndroid.open({
@@ -200,7 +286,7 @@ function AddInvoice(props)
                 }
             }) }}/>
             
-            <Button title="Thêm" onPress = {() => {
+            <Button disabled = { !isChose } title="Thêm" onPress = {() => {
                 addInvoice();
             }}/>
             <Button title="Hủy" onPress = {() => {
@@ -277,10 +363,13 @@ function DetailInvoice(props)
     var { navigate } = navigation;
     var { invoiceId, getAllInvoices } = props.route.params;
     var [ invoiceDetail, setInvoiceDetail ] = useState([]);
+    var { tempDetailInvoiceList, tempDetailInvoice, setTempDetailInvoiceList } = useContext(AppContext);
+    //console.log("detail invoice temp detail invoice:", tempDetailInvoice);
 
     useEffect(() => {
         getInvoiceDetail();
-    }, [])
+        //console.log("?");
+    }, [ tempDetailInvoice ])
 
     function getInvoiceDetail()
     {
@@ -303,24 +392,97 @@ function DetailInvoice(props)
                             getInvoiceDetail,
                         })
                     }} />
-                <View style={{ flexDirection: "row", justifyContent: "space-evenly" }}>
-                    <Text style = {{ fontWeight: "bold", fontSize: 20 }}>ID</Text>
-                    <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Mã hóa đơn</Text>
-                    <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Mã sản phẩm</Text>
-                    <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Số lượng</Text>
-                    <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Thành tiền</Text>
-                </View>
+                { tempDetailInvoiceList.filter(item => item.invoiceId == invoiceId).length > 1 ?
+                <Button title="LƯU" onPress={() =>
+                {
+                    tempDetailInvoiceList.forEach((item, index) =>
+                    {
+                        if (index == 0) return;
+                        console.log(item, index);
+                        fetch(IP + `invdel/${item.invoiceId}`, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                productId: item.productId,
+                                quantity: item.quantity,
+                            })
+                        }).then(async (respond) => {
+                            if (respond.status == 300)
+                            {
+                                Alert.alert("Thông báo", "Mã hóa đơn không tồn tại");
+                            }
+                            else if (respond.status == 301)
+                            {
+                                Alert.alert("Thông báo", "Mã sản phẩm không tồn tại");
+                            }
+                            else if (respond.status == 302)
+                            {
+                                Alert.alert("Thông báo", "Sản phẩm đã tồn tại trong hóa đơn đó");
+                            }
+                            else if (respond.status == 200)
+                            {
+                                Alert.alert("Thông báo", "Thêm sản phẩm vào hóa đơn thành công");
+                                //getInvoiceDetail();
+                                //navigation.goBack();
+                            }
+                            else
+                            {
+                                Alert.alert("Thông báo", "Lỗi không xác định: ", (await respond.json()).message);
+                            }
+                        })
+                    });
+                    setTempDetailInvoiceList([]);
+                }}/> : <View />}
+                <Text style = {{ textAlign: "center", fontWeight: "bold", fontSize: 20 }}>Hóa đơn số {invoiceId}</Text>
+                <View style = {{ marginVertical: 20 }} />
                 <FlatList data = {invoiceDetail}
                 renderItem={({ item, index }) => <ProductInvoiceDetail item = {item} navigate = {navigate}
                                                                        navigation={navigation} getInvoiceDetail={getInvoiceDetail}/>}/>
+                <FlatList data = { tempDetailInvoiceList }
+                renderItem={({ item, index }) => {
+                    if (index == 0) return;
+                    return <ProductDetailPendingAdd item = {item} navigate = {navigate} viewingInvoiceId = {invoiceId}
+                    navigation={navigation} getInvoiceDetail={getInvoiceDetail}/>
+                }}/>
             </SafeAreaView>
         </ScrollView>
     )
 }
+function ProductDetailPendingAdd(props)
+{
+    //console.log(props);
+    var { invoiceId, productName, productId, price, quantity } = props.item;
+    var { viewingInvoiceId } = props;
+    var { tempDetailInvoiceList, setTempDetailInvoiceList } = useContext(AppContext);
 
+    function removeProductById(array, productId) {
+        return array.filter(item => item.productid !== productId);
+    }
+
+    return (
+        <View>
+            {invoiceId == viewingInvoiceId ? 
+            <View style={{ flexDirection: "column", justifyContent: "space-evenly" }}>
+                <Text style = {{ fontWeight: "bold", fontSize: 20, textAlign: "center" }}>Đang thêm...</Text>
+                <Text style = {{ textAlign: "center" }}>------------------------------</Text>
+                <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Mã SP: {productId}</Text>
+                <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Tên SP: {productName}</Text>
+                <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Số lượng: {quantity}</Text>
+                <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Thành tiền: {quantity * price}</Text>
+                <View style = {{ flexDirection: "row" }}>
+                    <Button title="Xóa" onPress={() => {
+                        setTempDetailInvoiceList(removeProductById(tempDetailInvoiceList, productId));
+                    }}/>
+                </View>
+            </View>: <View />}
+        </View>
+    )
+}
 function ProductInvoiceDetail(props)
 {
-    var { InvoiceDetailID, InvoiceID, ProductID, Quantity, TotalPrice } = props.item;
+    var { InvoiceDetailID, InvoiceID, ProductID, ProductName, Quantity, TotalPrice } = props.item;
     var { navigate, navigation, getInvoiceDetail } = props;
 
     function deleteInvoiceDetail()
@@ -345,12 +507,13 @@ function ProductInvoiceDetail(props)
     }
 
     return (
-        <View style={{ flexDirection: "row", justifyContent: "space-evenly" }}>
-            <Text style = {{ fontWeight: "bold", fontSize: 20 }}>{InvoiceDetailID}</Text>
-            <Text style = {{ fontWeight: "bold", fontSize: 20 }}>{InvoiceID}</Text>
-            <Text style = {{ fontWeight: "bold", fontSize: 20 }}>{ProductID}</Text>
-            <Text style = {{ fontWeight: "bold", fontSize: 20 }}>{Quantity}</Text>
-            <Text style = {{ fontWeight: "bold", fontSize: 20 }}>{TotalPrice}</Text>
+        <View style={{ flexDirection: "column", justifyContent: "space-evenly" }}>
+            <Text style = {{ fontWeight: "bold", fontSize: 20, textAlign: "center" }}>ID {InvoiceDetailID}</Text>
+            <Text style = {{ textAlign: "center" }}>------------------------------</Text>
+            <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Mã SP: {ProductID}</Text>
+            <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Tên SP: {ProductName}</Text>
+            <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Số lượng: {Quantity}</Text>
+            <Text style = {{ fontWeight: "bold", fontSize: 20 }}>Thành tiền: {TotalPrice}</Text>
             <View style = {{ flexDirection: "row" }}>
                 <Button title="Sửa" onPress={() => {
                     navigate("EditDetailInvoice", {
@@ -372,14 +535,53 @@ function ProductInvoiceDetail(props)
 function AddDetailInvoice(props)
 {
     var { navigation, invoiceId, getInvoiceDetail } = props.route.params;
+    //console.log("type of set func, ", typeof setTempInvToList)
+    //console.log("adddetailinvoice:", props.route.params);
+    var { navigate } = navigation;
     var [ productList, setProductList ] = useState([])
     var [ productId, setProductId ] = useState("");
+    var [ productName, setProductName ] = useState("");
     var [ quantity, setQuantity ] = useState(0);
+    var [ price, setPrice ] = useState(0);
+    //var [ totalPrice, setTotalPrice ] = useState(0);
     var [ isChose, setIsChose ] = useState(false);
+
+    const { 
+        tempDetailInvoice, 
+        setTempDetailInvoice, 
+        tempDetailInvoiceList, 
+        setTempDetailInvoiceList 
+    } = useContext(AppContext);
 
     useEffect(() => {
         getAllProducts();
     }, [])
+    
+    function checkIsAlreadyExistInTempList()
+    {
+        return tempDetailInvoiceList.some(item => item.productId == productId && item.invoiceId == invoiceId);
+    }
+
+    async function checkInvoiceProductAvailable()
+    {
+        //console.log(invoiceId, productId);
+        var respond = await fetch(IP + `invdel/${invoiceId}/${productId}`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        })
+        if (respond.status == 200)
+        {
+            //console.log("status 200 mà ?")
+            //console.log(await respond.json());
+            //console.log("price from adi", price)
+            //setPrice((await respond.json()).price)
+            return true;
+        }
+        return false;
+    }
+
     function addProductToInvoice()
     {
         if (productId == "" || quantity == 0 || quantity == "")
@@ -435,17 +637,40 @@ function AddDetailInvoice(props)
             }
         })
     }
+    function removeDuplicatesByProductId(array) {
+        const seen = new Set();
+        return array.filter(item => {
+            if (seen.has(item.productid)) {
+                return false; // Skip duplicate
+            }
+            seen.add(item.productid);
+            return true; // Keep unique
+        });
+    }
     return (
         <SafeAreaView>
+            <Text style={{ textAlign: "center", fontSize: 20, fontWeight: "bold" }}>Thêm mới sản phẩm vào hóa đơn</Text>
+            <Text style={{ textAlign: "center" }}>----------------------------</Text>
+            <View style={{ marginVertical: 20 }}/>
             <Text>Mã hóa đơn</Text>
-            <Input disabled value = { invoiceId.toString() } />
+            <Input disabled value = { invoiceId?.toString() } />
             <Text>Mã sản phẩm</Text>
             <Picker onValueChange={ (val, idx) => { 
+                
                 setIsChose(true);
-                setProductId(val) }}>
+                setProductId(val);
+                setProductName(productList[idx].ProductName);
+                setPrice(productList[idx].Price);
+                //setTotalPrice(quantity * price);
+                console.log(productId, productName, price);
+                //console.log(productName);
+            }}>
                 {productList.map((item, index) => 
-                <Picker.Item value = {item.ProductID} label={item.ProductName}
-                style = {{ width: 200, height: 100 }} />)}
+                {
+                    //console.log(item);
+                    return <Picker.Item value = {item.ProductID} label={item.ProductName}
+                    style = {{ width: 200, height: 100 }} />
+                })}
             </Picker>
             <Text>Số lượng</Text>
             <Input keyboardType="numeric" value = { quantity } onChangeText={(txt) => {
@@ -455,7 +680,29 @@ function AddDetailInvoice(props)
                 }
             }}/>
             <Button title="Thêm" disabled={!isChose} onPress={() => {
-                addProductToInvoice();
+                //addProductToInvoice();
+                //console.log(tempDetailInvoice);
+                if (checkInvoiceProductAvailable() && !checkIsAlreadyExistInTempList())
+                {
+                    console.log("quantity n price", quantity, price)
+                    setTempDetailInvoice({
+                        invoiceId,
+                        productName,
+                        productId,
+                        price,
+                        quantity,
+                        //totalPrice,
+                    });
+                    setTempDetailInvoiceList((prevList) => ([...prevList, tempDetailInvoice]));
+                    navigation.goBack();
+                    //setTempDetailInvoiceList((prevList) => (prevList));
+                    //setTempInvToList();
+                    //console.log(tempDetailInvoice);
+                    //navigate("DetailInvoice", { tempDetailInvoice, fromADI: true })
+                    return;
+                }
+                console.log("no no");
+                Alert.alert("Sản phẩm đã tồn tại trong hóa đơn", "Thông báo");
             }}/>
         </SafeAreaView>
     )
@@ -502,7 +749,7 @@ function EditDetailInvoice(props)
                 if (!isNaN(txt))
                 {
                     setQuantity(txt);
-                    console.log(InvoiceID);
+                    //console.log(InvoiceID);
                 }
             }}/>
             <Button title="Lưu" onPress={() => {
